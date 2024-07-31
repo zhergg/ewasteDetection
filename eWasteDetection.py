@@ -15,7 +15,7 @@ run = st.checkbox('Run Webcam')
 frame_placeholder = st.empty()
 
 # Load the trained model
-model = YOLO('path/to/your/model/best.pt')
+model = YOLO('best (1).pt')
 
 def process_frame(image_data):
     image_data = image_data.split(',')[1]  # Remove the data URL part

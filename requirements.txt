@@ -4,4 +4,4 @@ streamlit
 numpy==1.26.4
 pillow
 matplotlib==3.7.1
-os
+

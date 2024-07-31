@@ -3,22 +3,12 @@ from ultralytics import YOLO
 import streamlit as st
 
 from PIL import Image
-import os
-
-
-
-
-current_dir=os.path.dirname(__file__)
-
-
-
-file_path=os.join(current_dir,'best (1).pt')
 
 
 
 
 # Load the trained model
-model = YOLO(file_path)
+model = YOLO('best (1).pt')
 
 st.title("Webcam Object Detection")
 

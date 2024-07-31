@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 
 # Load the trained model
-model = YOLO(r'C:\Users\USER\Documents\imageprocessing2\1435images30epochs\best (1).pt')
+model = YOLO('best (1).pt')
 
 st.title("Webcam Object Detection")
 

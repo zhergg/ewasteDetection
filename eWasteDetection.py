@@ -1,4 +1,10 @@
 import streamlit as st
+import cv2
+import numpy as np
+from PIL import Image
+from io import BytesIO
+import base64
+from ultralytics import YOLO
 
 st.title("Webcam Object Detection")
 
@@ -8,7 +14,34 @@ run = st.checkbox('Run Webcam')
 # Create a placeholder for the video frames
 frame_placeholder = st.empty()
 
-# JavaScript to get live video feed from webcam
+# Load the trained model
+model = YOLO('path/to/your/model/best.pt')
+
+def process_frame(image_data):
+    image_data = image_data.split(',')[1]  # Remove the data URL part
+    image = Image.open(BytesIO(base64.b64decode(image_data)))
+
+    # Convert to OpenCV format
+    frame = np.array(image)
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+    # Perform object detection
+    results = model(frame)
+
+    # Draw bounding boxes on the frame
+    for result in results:
+        for box in result.boxes.data:
+            x1, y1, x2, y2 = map(int, box[:4])
+            conf = box[4]
+            cls = int(box[5])
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(frame, f'{model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    # Convert frame back to image format for display
+    _, buffer = cv2.imencode('.jpg', frame)
+    processed_image = base64.b64encode(buffer).decode('utf-8')
+    return f'data:image/jpeg;base64,{processed_image}'
+
 if run:
     st.markdown("""
         <video id="video" width="640" height="480" autoplay></video>
@@ -26,9 +59,6 @@ if run:
     
     st.write("The webcam is running. Processing video feed...")
 
-    # Placeholder for video stream
-    video_stream_placeholder = st.empty()
-
     st.markdown("""
         <script>
             const videoElement = document.getElementById('video');
@@ -43,15 +73,15 @@ if run:
                     ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
                     const frameData = canvas.toDataURL('image/jpeg');
 
-                    fetch('/process-frame', {
+                    const response = fetch('', {
                         method: 'POST',
                         body: JSON.stringify({ image: frameData }),
                         headers: { 'Content-Type': 'application/json' }
-                    })
-                    .then(response => response.json())
+                    });
+                    response.then(data => data.json())
                     .then(data => {
                         // Update the video stream placeholder with the processed frame
-                        video_stream_placeholder.image(data.processed_image_url);
+                        frame_placeholder.image(data.processed_image_url);
                     })
                     .catch(error => console.error('Error processing frame:', error));
                 }
@@ -61,47 +91,7 @@ if run:
         </script>
     """, unsafe_allow_html=True)
 
-    # Backend endpoint for processing video frames
-    import flask
-    from flask import request, jsonify
-    import cv2
-    
-    from PIL import Image
-    from io import BytesIO
-    from ultralytics import YOLO
-
-    app = flask.Flask(__name__)
-
-    # Load the trained model
-    model = YOLO('best (1).pt')
-
-    @app.route('/process-frame', methods=['POST'])
-    def process_frame():
-        data = request.get_json()
-        image_data = data['image']
-        image_data = image_data.split(',')[1]  # Remove the data URL part
-        image = Image.open(BytesIO(base64.b64decode(image_data)))
-
-        # Convert to OpenCV format
-        frame = np.array(image)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        # Perform object detection
-        results = model(frame)
-
-        # Draw bounding boxes on the frame
-        for result in results:
-            for box in result.boxes.data:
-                x1, y1, x2, y2 = map(int, box[:4])
-                conf = box[4]
-                cls = int(box[5])
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, f'{model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        # Convert frame to a format that can be displayed in the browser
-        _, buffer = cv2.imencode('.jpg', frame)
-        processed_image = base64.b64encode(buffer).decode('utf-8')
-        return jsonify({'processed_image_url': f'data:image/jpeg;base64,{processed_image}'})
-
-    if __name__ == '__main__':
-        app.run(debug=True, port=5000)
+    if st.request.method == 'POST':
+        data = st.request.json
+        processed_image_url = process_frame(data['image'])
+        st.json({'processed_image_url': processed_image_url})

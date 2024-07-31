@@ -3,4 +3,4 @@ ultralytics
 streamlit
 numpy==1.26.4
 pillow
-matplotlib
+matplotlib==3.7.1

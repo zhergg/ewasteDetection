@@ -1,14 +1,4 @@
-import cv2
-from ultralytics import YOLO
 import streamlit as st
-
-from PIL import Image
-
-
-
-
-# Load the trained model
-model = YOLO('best (1).pt')
 
 st.title("Webcam Object Detection")
 
@@ -18,29 +8,83 @@ run = st.checkbox('Run Webcam')
 # Create a placeholder for the video frames
 frame_placeholder = st.empty()
 
-# Use session state to maintain the state of the checkbox
-if 'run' not in st.session_state:
-    st.session_state.run = False
+# JavaScript to get live video feed from webcam
+if run:
+    st.markdown("""
+        <video id="video" width="640" height="480" autoplay></video>
+        <script>
+            var video = document.getElementById('video');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    console.error('Error accessing webcam:', err);
+                });
+        </script>
+    """, unsafe_allow_html=True)
+    
+    st.write("The webcam is running. Processing video feed...")
 
-# Update session state based on checkbox
-st.session_state.run = run
+    # Placeholder for video stream
+    video_stream_placeholder = st.empty()
 
-# Function to read from the webcam and display the video frames
-def webcam_stream():
-    # Initialize the webcam
-    cap = cv2.VideoCapture(0)
+    st.markdown("""
+        <script>
+            const videoElement = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const frameRate = 30; // Adjust the frame rate if necessary
 
-    if not cap.isOpened():
-        st.error("Failed to open webcam.")
-        return
+            function processFrame() {
+                if (videoElement.readyState >= 2) {
+                    canvas.width = videoElement.videoWidth;
+                    canvas.height = videoElement.videoHeight;
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    const frameData = canvas.toDataURL('image/jpeg');
 
-    while st.session_state.run:
-        # Capture frame-by-frame
-        ret, frame = cap.read()
+                    fetch('/process-frame', {
+                        method: 'POST',
+                        body: JSON.stringify({ image: frameData }),
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update the video stream placeholder with the processed frame
+                        video_stream_placeholder.image(data.processed_image_url);
+                    })
+                    .catch(error => console.error('Error processing frame:', error));
+                }
+                setTimeout(processFrame, 1000 / frameRate);
+            }
+            processFrame();
+        </script>
+    """, unsafe_allow_html=True)
 
-        if not ret:
-            st.error("Failed to capture image from webcam.")
-            break
+    # Backend endpoint for processing video frames
+    import flask
+    from flask import request, jsonify
+    import cv2
+    
+    from PIL import Image
+    from io import BytesIO
+    from ultralytics import YOLO
+
+    app = flask.Flask(__name__)
+
+    # Load the trained model
+    model = YOLO(r'C:\Users\USER\Documents\imageprocessing2\1435images30epochs\best (1).pt')
+
+    @app.route('/process-frame', methods=['POST'])
+    def process_frame():
+        data = request.get_json()
+        image_data = data['image']
+        image_data = image_data.split(',')[1]  # Remove the data URL part
+        image = Image.open(BytesIO(base64.b64decode(image_data)))
+
+        # Convert to OpenCV format
+        frame = np.array(image)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         # Perform object detection
         results = model(frame)
@@ -54,18 +98,10 @@ def webcam_stream():
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, f'{model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Convert the frame to RGB format and display it using Streamlit
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_image = Image.fromarray(frame_rgb)
-        frame_placeholder.image(frame_image)
+        # Convert frame to a format that can be displayed in the browser
+        _, buffer = cv2.imencode('.jpg', frame)
+        processed_image = base64.b64encode(buffer).decode('utf-8')
+        return jsonify({'processed_image_url': f'data:image/jpeg;base64,{processed_image}'})
 
-    # Release the webcam
-    cap.release()
-    cv2.destroyAllWindows()
-
-# Start the webcam stream in a new thread if the checkbox is checked
-if st.session_state.run:
-    webcam_stream()
-    st.stop()
-
-st.write("Click the checkbox to start the webcam.")
+    if __name__ == '__main__':
+        app.run(debug=True, port=5000)

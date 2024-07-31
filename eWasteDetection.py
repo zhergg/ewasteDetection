@@ -1,7 +1,7 @@
 import cv2
 from ultralytics import YOLO
 import streamlit as st
-import numpy as np
+
 from PIL import Image
 import os
 

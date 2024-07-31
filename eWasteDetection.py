@@ -73,7 +73,7 @@ if run:
     app = flask.Flask(__name__)
 
     # Load the trained model
-    model = YOLO(r'C:\Users\USER\Documents\imageprocessing2\1435images30epochs\best (1).pt')
+    model = YOLO('best (1).pt')
 
     @app.route('/process-frame', methods=['POST'])
     def process_frame():

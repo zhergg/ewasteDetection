@@ -1,21 +1,14 @@
 import streamlit as st
-import cv2
+import base64
 import numpy as np
 from PIL import Image
-from io import BytesIO
-import base64
+import cv2
 from ultralytics import YOLO
 
 st.title("Webcam Object Detection")
 
-# Create a checkbox for starting/stopping the webcam
-run = st.checkbox('Run Webcam')
-
-# Create a placeholder for the video frames
-frame_placeholder = st.empty()
-
 # Load the trained model
-model = YOLO('best (1).pt')
+model = YOLO('best (1).pt')  # Update with your model path
 
 def process_frame(image_data):
     image_data = image_data.split(',')[1]  # Remove the data URL part
@@ -42,7 +35,8 @@ def process_frame(image_data):
     processed_image = base64.b64encode(buffer).decode('utf-8')
     return f'data:image/jpeg;base64,{processed_image}'
 
-if run:
+# Display video processing results
+if st.checkbox('Run Webcam'):
     st.markdown("""
         <video id="video" width="640" height="480" autoplay></video>
         <script>
@@ -56,15 +50,14 @@ if run:
                 });
         </script>
     """, unsafe_allow_html=True)
-    
-    st.write("The webcam is running. Processing video feed...")
 
+    # Video processing loop
     st.markdown("""
         <script>
             const videoElement = document.getElementById('video');
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const frameRate = 30; // Adjust the frame rate if necessary
+            const frameRate = 30;
 
             function processFrame() {
                 if (videoElement.readyState >= 2) {
@@ -73,15 +66,15 @@ if run:
                     ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
                     const frameData = canvas.toDataURL('image/jpeg');
 
-                    const response = fetch('', {
+                    fetch('/process-frame', {
                         method: 'POST',
                         body: JSON.stringify({ image: frameData }),
                         headers: { 'Content-Type': 'application/json' }
-                    });
-                    response.then(data => data.json())
+                    })
+                    .then(response => response.json())
                     .then(data => {
                         // Update the video stream placeholder with the processed frame
-                        frame_placeholder.image(data.processed_image_url);
+                        st.image(data.processed_image_url);
                     })
                     .catch(error => console.error('Error processing frame:', error));
                 }
@@ -90,8 +83,3 @@ if run:
             processFrame();
         </script>
     """, unsafe_allow_html=True)
-
-    if st.request.method == 'POST':
-        data = st.request.json
-        processed_image_url = process_frame(data['image'])
-        st.json({'processed_image_url': processed_image_url})

@@ -23,6 +23,17 @@ if image:
     # Optional: Convert the image to BGR format (OpenCV uses BGR)
     # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Uncomment if needed
 
+    # Debug: Print the shape of the image
+    st.write(f"Image shape: {frame.shape}")
+
+    # Check if the image has 3 channels, if not, convert it
+    if len(frame.shape) == 2:
+        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    elif frame.shape[2] == 1:
+        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    elif frame.shape[2] != 3:
+        st.error(f"Unexpected number of channels: {frame.shape[2]}")
+
     # Perform object detection
     results = model(frame)
 

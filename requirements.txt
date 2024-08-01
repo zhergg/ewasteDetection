@@ -1,7 +1,9 @@
 opencv-python-headless
 ultralytics
+streamlit
 streamlit-camera-input-live
 flask
 pillow
 matplotlib==3.7.1
+
 

@@ -5,7 +5,7 @@ import numpy as np
 from ultralytics import YOLO
 
 # Load the YOLO model
-model = YOLO('path/to/your/model/best.pt')  # Replace with your actual model path
+model = YOLO('best (1).pt')  # Replace with your actual model path
 
 # Streamlit title
 st.title("Webcam Object Detection")

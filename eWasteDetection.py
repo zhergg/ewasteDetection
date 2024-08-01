@@ -1,8 +1,9 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration, WebRtcMode
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import av
 
 # Load the YOLO model
 model = YOLO('best (1).pt')  # Replace with your actual model path
@@ -35,7 +36,7 @@ class VideoProcessor(VideoProcessorBase):
 
 webrtc_streamer(
     key="object-detection",
-    mode="video",
+    mode=WebRtcMode.SENDRECV,  # Use WebRtcMode.SENDRECV instead of mode.name
     rtc_configuration=RTC_CONFIGURATION,
     video_processor_factory=VideoProcessor,
     media_stream_constraints={"video": True, "audio": False},

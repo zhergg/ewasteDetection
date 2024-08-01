@@ -18,21 +18,25 @@ class VideoProcessor(VideoProcessorBase):
         self.model = model
     
     def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
+        try:
+            img = frame.to_ndarray(format="bgr24")
 
-        # Process the frame using YOLO model
-        results = self.model(img)
+            # Process the frame using YOLO model
+            results = self.model(img)
 
-        # Draw bounding boxes
-        for result in results:
-            for box in result.boxes.data:
-                x1, y1, x2, y2 = map(int, box[:4])
-                conf = box[4]
-                cls = int(box[5])
-                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(img, f'{self.model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # Draw bounding boxes
+            for result in results:
+                for box in result.boxes.data:
+                    x1, y1, x2, y2 = map(int, box[:4])
+                    conf = box[4]
+                    cls = int(box[5])
+                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(img, f'{self.model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
+        except Exception as e:
+            st.error(f"Error processing video frame: {e}")
+            return frame
 
 webrtc_ctx = webrtc_streamer(
     key="object-detection",

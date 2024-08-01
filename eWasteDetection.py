@@ -34,10 +34,16 @@ class VideoProcessor(VideoProcessorBase):
 
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-webrtc_streamer(
+webrtc_ctx = webrtc_streamer(
     key="object-detection",
-    mode=WebRtcMode.SENDRECV,  # Use WebRtcMode.SENDRECV instead of mode.name
+    mode=WebRtcMode.SENDRECV,
     rtc_configuration=RTC_CONFIGURATION,
     video_processor_factory=VideoProcessor,
     media_stream_constraints={"video": True, "audio": False},
 )
+
+# Debug information
+if webrtc_ctx.video_processor:
+    st.write("Video processor initialized.")
+else:
+    st.write("Failed to initialize video processor.")

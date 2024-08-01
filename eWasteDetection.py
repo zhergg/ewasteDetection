@@ -14,11 +14,14 @@ st.title("Webcam Object Detection")
 image = camera_input_live()
 
 if image:
-    # Convert the image to a numpy array
-    image = np.array(image)
+    # If the image is a PIL image, convert it to a NumPy array
+    if isinstance(image, np.ndarray):
+        frame = image  # Already a NumPy array
+    else:
+        frame = np.array(image)  # Convert PIL image to NumPy array
 
-    # Convert the image to BGR format (as OpenCV uses BGR)
-    frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    # Optional: Convert the image to BGR format (OpenCV uses BGR)
+    # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Uncomment if needed
 
     # Perform object detection
     results = model(frame)

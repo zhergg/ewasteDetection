@@ -20,34 +20,33 @@ if image:
     else:
         frame = np.array(image)  # Convert PIL image to NumPy array
 
-    # Optional: Convert the image to BGR format (OpenCV uses BGR)
-    # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Uncomment if needed
-
-    # Debug: Print the shape of the image
+    # Check the shape of the image
     st.write(f"Image shape: {frame.shape}")
 
-    # Check if the image has 3 channels, if not, convert it
-    if len(frame.shape) == 2:
+    # Handle different image formats
+    if len(frame.shape) == 2:  # If the image is grayscale
         frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-    elif frame.shape[2] == 1:
+    elif len(frame.shape) == 3 and frame.shape[2] == 1:  # Single channel but 3D array
         frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-    elif frame.shape[2] != 3:
-        st.error(f"Unexpected number of channels: {frame.shape[2]}")
+    elif len(frame.shape) != 3 or frame.shape[2] != 3:
+        st.error(f"Unexpected image format: {frame.shape}")
+    else:
+        # Process the frame using YOLO model
+        results = model(frame)
 
-    # Perform object detection
-    results = model(frame)
+        # Draw bounding boxes
+        for result in results:
+            for box in result.boxes.data:
+                x1, y1, x2, y2 = map(int, box[:4])
+                conf = box[4]
+                cls = int(box[5])
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, f'{model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-    # Draw bounding boxes
-    for result in results:
-        for box in result.boxes.data:
-            x1, y1, x2, y2 = map(int, box[:4])
-            conf = box[4]
-            cls = int(box[5])
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, f'{model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-    # Convert the processed frame back to RGB (for Streamlit)
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    
-    # Display the processed image in the Streamlit app
-    st.image(frame, caption="Processed Image")
+        # Convert the processed frame back to RGB (for Streamlit)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Display the processed image in the Streamlit app
+        st.image(frame, caption="Processed Image")
+else:
+    st.write("No image captured.")

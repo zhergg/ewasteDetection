@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
 import cv2
 import numpy as np
 from ultralytics import YOLO
@@ -6,39 +7,20 @@ from ultralytics import YOLO
 # Load the YOLO model
 model = YOLO('best (1).pt')  # Replace with your actual model path
 
-# Streamlit title
 st.title("Webcam Object Detection")
 
-# Checkbox to start/stop the webcam
-run = st.checkbox('Run Webcam')
+# RTC configuration to allow the camera to work on more browsers
+RTC_CONFIGURATION = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
 
-# Placeholder for the video feed
-frame_placeholder = st.empty()
+class VideoProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.model = model
+    
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
 
-# Start capturing video from the webcam
-cap = cv2.VideoCapture(0)
-
-if not cap.isOpened():
-    st.error("Cannot open webcam")
-
-while run:
-    ret, frame = cap.read()
-
-    if not ret:
-        st.error("Failed to grab frame")
-        break
-
-    # Convert the frame from BGR (OpenCV default) to RGB
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    # Check the shape of the image
-    st.write(f"Image shape: {frame_rgb.shape}")
-
-    if frame_rgb.size == 0:
-        st.error("The captured image is empty. Please try again.")
-    else:
-        # Process the frame using the YOLO model
-        results = model(frame_rgb)
+        # Process the frame using YOLO model
+        results = self.model(img)
 
         # Draw bounding boxes
         for result in results:
@@ -46,14 +28,15 @@ while run:
                 x1, y1, x2, y2 = map(int, box[:4])
                 conf = box[4]
                 cls = int(box[5])
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, f'{model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(img, f'{self.model.names[cls]} {conf:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Convert the processed frame back to RGB for displaying in Streamlit
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-        # Display the processed image in the Streamlit app
-        frame_placeholder.image(frame_rgb, channels="RGB")
-
-# Release the video capture object when done
-cap.release()
+webrtc_streamer(
+    key="object-detection",
+    mode="video",
+    rtc_configuration=RTC_CONFIGURATION,
+    video_processor_factory=VideoProcessor,
+    media_stream_constraints={"video": True, "audio": False},
+)

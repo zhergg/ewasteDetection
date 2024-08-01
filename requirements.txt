@@ -4,4 +4,4 @@ streamlit
 flask
 pillow
 matplotlib==3.7.1
-streamlit-camera-input-live
+
